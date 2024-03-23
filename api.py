@@ -1,10 +1,17 @@
+import base64
+import random
 import flask
 from predict import predict_fire
 import os
+from PIL import Image
+from io import BytesIO
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 
+def pick_random():
+    options = ["0.0", "1.0"]
+    return random.choice(options)
 
 @app.route('/', methods=['GET','POST'])
 def detect():
@@ -71,13 +78,31 @@ def detect():
         ''')
     elif flask.request.method == 'POST':
         # Check if the POST request contains an image
-        if 'image' not in flask.request.files:
-            return "No image provided", 400
+                
+        data = flask.request.get_json()
         
-        image = flask.request.files['image']
+        testMode = bool(data['testMode'])
+
+        if(testMode):
+            return {
+                'nasnet':pick_random(),
+                'shufflenet':pick_random(),
+                'testMode':"Returns random prediction values"
+            }
+        
+        base64_string = data['image']
+        
+        print(data)
+        
+        # Decode the base64 string into binary image data
+        image_data = base64.b64decode(base64_string)
+
+        # Process the image data (for example, saving to a file or performing image manipulation)
+        # Here, we'll just convert the image data back to an image and save it to a file
+        image = Image.open(BytesIO(image_data))
         
         # Save the image to disk or process it as required
-        image_path = 'uploads/'+image.filename
+        image_path = 'uploads/uploaded.png'
         image.save(image_path)
         
         #detect
@@ -85,7 +110,7 @@ def detect():
         shufflenet = predict_fire(image_path,'shufflenetonfire')
         
         #remove file
-        os.remove(image_path)
+        # os.remove(image_path)
         
         #return predictions
         predictions = {
