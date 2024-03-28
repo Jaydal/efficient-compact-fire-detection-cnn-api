@@ -1,6 +1,9 @@
 import base64
+import datetime
 import random
+import uuid
 import flask
+import requests
 from predict import predict_fire
 import os
 from PIL import Image
@@ -8,10 +11,18 @@ from io import BytesIO
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
+camera_capture = 'http://192.168.1.39/capture'#change if necessary
 
 def pick_random():
     options = ["0.0", "1.0"]
     return random.choice(options)
+
+def get_photo():
+    response = requests.get(camera_capture)
+    if response.status_code == 200:
+        return response.content, 200
+    else:
+        return 'Failed to fetch image', 400
 
 @app.route('/', methods=['GET','POST'])
 def detect():
@@ -77,32 +88,33 @@ def detect():
             </html>
         ''')
     elif flask.request.method == 'POST':
-        # Check if the POST request contains an image
-                
+        
+        print("============================")        
         data = flask.request.get_json()
         
         testMode = bool(data['testMode'])
 
         if(testMode):
+            print("Test mode enabled")
             return {
                 'nasnet':pick_random(),
                 'shufflenet':pick_random(),
                 'testMode':"Returns random prediction values"
             }
+                    
+        image_data, status_code = get_photo()
         
-        base64_string = data['image']
+        if(status_code==400):
+            print("Failed to capture image!")
+            return 400
         
-        print(data)
-        
-        # Decode the base64 string into binary image data
-        image_data = base64.b64decode(base64_string)
-
-        # Process the image data (for example, saving to a file or performing image manipulation)
-        # Here, we'll just convert the image data back to an image and save it to a file
         image = Image.open(BytesIO(image_data))
         
-        # Save the image to disk or process it as required
-        image_path = 'uploads/uploaded.png'
+        unique_filename = str(uuid.uuid4()) + '.png'
+
+        print(unique_filename)
+        image_path = os.path.join('uploads', unique_filename)
+        
         image.save(image_path)
         
         #detect
@@ -112,11 +124,13 @@ def detect():
         #remove file
         # os.remove(image_path)
         
-        #return predictions
         predictions = {
                 'nasnet':str(nasnet),
                 'shufflenet':str(shufflenet)
             }
+        
+        print(predictions)
+        
         return flask.jsonify(predictions), 200
 
 app.run(host='0.0.0.0', port=3000)
