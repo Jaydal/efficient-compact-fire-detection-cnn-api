@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/tailwind.min.css" rel="stylesheet">
+    <title>Recently Captured Images</title>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-4 text-center">Recently Captured Images</h1>
+        <ul id='image-list' class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+        </ul>
+    </div>
+
+    <script>
+        function fetchRecentImages() {
+            fetch('/get_recent_images') // Replace with your server endpoint
+                .then(response => response.json())
+                .then(data => {
+                    const imageList = document.getElementById('image-list');
+                    imageList.innerHTML = ''; // Clear existing list
+        
+                    data.forEach(image => {
+                        const li = document.createElement('li');
+                        li.className = 'bg-gray-800 rounded-lg shadow-md p-4 flex items-center justify-center'; // Add the desired classes
+                        const img = document.createElement('img');
+                        img.src = `{{ url_for('static', filename='uploads/') }}`+image;
+                        img.alt = 'Recent Image';
+                        img.className = 'w-full h-auto object-contain'; // Add the desired classes
+                        li.appendChild(img);
+                        imageList.appendChild(li);
+                    });
+                })
+                .catch(error => console.error('Error fetching recent images:', error));
+        }
+
+        // Fetch recent images initially
+        fetchRecentImages();
+
+        setInterval(fetchRecentImages, 1000);
+    </script>
+</body>
+</html>
+

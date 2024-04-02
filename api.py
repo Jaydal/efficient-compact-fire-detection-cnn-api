@@ -1,5 +1,5 @@
-import base64
-import datetime
+from genericpath import isfile
+from ntpath import join
 import random
 import uuid
 import flask
@@ -11,7 +11,19 @@ from io import BytesIO
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
-camera_capture = 'http://192.168.1.39/capture'#change if necessary
+camera_capture = 'http://192.168.1.100/capture'
+
+def recent_images():
+    # Path to the uploads folder
+    uploads_folder = 'static/uploads/'
+    # Get a list of all files in the uploads folder
+    all_files = [f for f in os.listdir(uploads_folder) if isfile(join(uploads_folder, f))]
+    # Filter out only image files
+    image_files = [f for f in all_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
+    # Sort the images by modification time (newest first)
+    sorted_images = sorted(image_files, key=lambda x: os.path.getmtime(os.path.join(uploads_folder, x)), reverse=True)
+    # Take the five most recent images
+    return sorted_images[:4]
 
 def pick_random():
     options = ["0.0", "1.0"]
@@ -27,68 +39,8 @@ def get_photo():
 @app.route('/', methods=['GET','POST'])
 def detect():
     if flask.request.method == 'GET':
-         return flask.render_template_string('''
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Upload File</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        background-color: #f0f0f0;
-                        margin: 0;
-                        padding: 0;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        height: 100vh;
-                    }
-                    .container {
-                        background-color: #fff;
-                        padding: 20px;
-                        border-radius: 8px;
-                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-                    }
-                    h1 {
-                        text-align: center;
-                    }
-                    form {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                    }
-                    input[type="file"] {
-                        margin-bottom: 20px;
-                    }
-                    button[type="submit"] {
-                        padding: 10px 20px;
-                        border: none;
-                        background-color: #007bff;
-                        color: #fff;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        transition: background-color 0.3s ease;
-                    }
-                    button[type="submit"]:hover {
-                        background-color: #0056b3;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>Upload File</h1>
-                    <form method="post" enctype="multipart/form-data">
-                        <input type="file" name="image">
-                        <button type="submit">Upload</button>
-                    </form>
-                </div>
-            </body>
-            </html>
-        ''')
+        return flask.render_template('index.html', images=recent_images() )
     elif flask.request.method == 'POST':
-        
         print("============================")        
         data = flask.request.get_json()
         
@@ -106,6 +58,7 @@ def detect():
         
         if(status_code==400):
             print("Failed to capture image!")
+            print("*************************")
             return 400
         
         image = Image.open(BytesIO(image_data))
@@ -113,7 +66,7 @@ def detect():
         unique_filename = str(uuid.uuid4()) + '.png'
 
         print(unique_filename)
-        image_path = os.path.join('uploads', unique_filename)
+        image_path = os.path.join('static/uploads', unique_filename)
         
         image.save(image_path)
         
@@ -132,5 +85,11 @@ def detect():
         print(predictions)
         
         return flask.jsonify(predictions), 200
+    
+@app.route('/get_recent_images', methods=['GET'])
+def get_recent_images():
+    # Return the recent images as JSON
+    image_list = recent_images()
+    return flask.jsonify(image_list)
 
-app.run(host='0.0.0.0', port=3000)
+app.run(host='0.0.0.0', port=80)
