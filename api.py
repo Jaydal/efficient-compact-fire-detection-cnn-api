@@ -1,3 +1,4 @@
+from datetime import datetime
 from genericpath import isfile
 from ntpath import join
 import random
@@ -98,7 +99,9 @@ def create_log():
     if flask.request.method == 'POST':
         data = flask.request.get_json()
         if 'message' in data:
-            logs.append(data['message'])
+            log_message = data['message']
+            log_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            logs.append((log_message, log_timestamp))
             return flask.jsonify({'message': 'Log created successfully.'}), 201
         else:
             return flask.jsonify({'error': 'Message not provided.'}), 400
@@ -106,6 +109,12 @@ def create_log():
 @app.route('/logs', methods=['GET'])
 def get_logs():
     if flask.request.method == 'GET':
-        return flask.render_template('logs.html', logs=logs)
+        reversed_logs = reversed(logs)
+        return flask.render_template('logs.html', logs=reversed_logs)
+    
+@app.route('/logs/raw', methods=['GET'])
+def get_raw_logs():
+    if flask.request.method == 'GET':
+        return flask.jsonify({'logs': list(reversed(logs))})
 
 app.run(host='0.0.0.0', port=80)

@@ -3,14 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/tailwind.min.css" rel="stylesheet">
     <title>Logs Listing</title>
 </head>
-<body class="bg-gray-100 p-8">
+<body class="bg-gray-900 text-white p-8"> <!-- Dark theme classes added -->
     <h1 class="text-2xl font-bold mb-4">Logs</h1>
-    <ul class="divide-y divide-gray-300">
-        {% for log in logs %}
-            <li class="py-2">{{ log }}</li>
+    <ul id="logsList" class="divide-y divide-gray-700"> <!-- Dark theme classes added -->
+        {% for log, timestamp in logs %}
+            <li class="py-2">
+                <span class="font-bold text-gray-400">{{ timestamp }}</span>: {{ log }} <!-- Text color adjusted for timestamp -->
+            </li>
         {% endfor %}
     </ul>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function loadLogs() {
+                fetch('/logs/raw')
+                    .then(response => response.json())
+                    .then(data => {
+                        const logsList = document.getElementById('logsList');
+                        logsList.innerHTML = '';
+                        data.logs.forEach(log => {
+                            const li = document.createElement('li');
+                            li.className = 'py-2';
+                            li.innerHTML = `<span class="font-bold text-gray-400">${log[1]}</span>: ${log[0]}`;
+                            logsList.appendChild(li);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching logs:', error));
+            }
+
+            // Initial load of logs
+            loadLogs();
+
+            // Reload logs every 5 seconds
+            setInterval(loadLogs, 1000); // 5 seconds
+        });
+    </script>
 </body>
 </html>
