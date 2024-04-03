@@ -12,6 +12,7 @@ from io import BytesIO
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 camera_capture = 'http://192.168.1.100/capture'
+logs = []
 
 def recent_images():
     # Path to the uploads folder
@@ -91,5 +92,20 @@ def get_recent_images():
     # Return the recent images as JSON
     image_list = recent_images()
     return flask.jsonify(image_list)
+
+@app.route('/logs', methods=['POST'])
+def create_log():
+    if flask.request.method == 'POST':
+        data = flask.request.get_json()
+        if 'message' in data:
+            logs.append(data['message'])
+            return flask.jsonify({'message': 'Log created successfully.'}), 201
+        else:
+            return flask.jsonify({'error': 'Message not provided.'}), 400
+
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    if flask.request.method == 'GET':
+        return flask.render_template('logs.html', logs=logs)
 
 app.run(host='0.0.0.0', port=80)
