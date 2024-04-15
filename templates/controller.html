@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controller</title>
+    <!-- Include Tailwind CSS -->
+    <link href="/static/tailwind.min.css" rel="stylesheet">
+    <!-- Include Font Awesome -->
+    <link href="/static/fontawesome/css/all.min.css" rel="stylesheet">
+    <style>
+        .button {
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <h1 class="text-3xl text-center my-8"><strong>AFULA</strong> Controller</h1>
+    <div class="flex flex-col items-center">
+        <button class="button bg-blue-700 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full mb-6" id="forward"><i class="fas fa-arrow-up"></i></button>
+        <div class="flex">
+            <button class="button bg-blue-700 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full mr-6" id="left"><i class="fas fa-arrow-left"></i></button>
+            <button class="button bg-red-700 hover:bg-red-900 text-white font-bold py-3 px-6 rounded-full mr-6" id="stop"><i class="fas fa-stop"></i></button>
+            <button class="button bg-blue-700 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full" id="right"><i class="fas fa-arrow-right"></i></button>
+        </div>
+        <button class="button bg-blue-700 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full mt-6" id="backward"><i class="fas fa-arrow-down"></i></button>
+        <div class="flex mt-6">
+            <button class="button bg-green-700 hover:bg-green-900 text-white font-bold py-3 px-6 rounded-full mr-6" id="manualMode"><i class="fas fa-user"></i> Manual Mode</button>
+            <button class="button bg-yellow-700 hover:bg-yellow-900 text-white font-bold py-3 px-6 rounded-full" id="testMode"><i class="fas fa-tools"></i> Test Mode</button>
+        </div>
+        <div class="flex mt-6">
+            <button class="button bg-red-700 hover:bg-red-900 text-white font-bold py-3 px-6 rounded-full mr-6" id="extinguish"><i class="fas fa-fire-extinguisher"></i> Extinguish</button>
+            <button class="button bg-gray-700 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-full" id="reset"><i class="fas fa-sync-alt"></i> Reset</button>
+        </div>
+        <div class="flex mt-6">
+            <button class="button bg-gray-700 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-full mr-6" id="motorToggle"><i class="fas fa-power-off"></i> Motor</button>
+            <button class="button bg-purple-700 hover:bg-purple-900 text-white font-bold py-3 px-6 rounded-full" id="musicToggle"><i class="fas fa-music"></i> Music</button>
+        </div>
+    </div>
+
+    <script>
+        let intervalId;
+        let manualModeActive = false;
+        let testModeActive = false;
+        let musicModeActive = false;
+        let motorModeActive = false;
+
+        // Function to send commands to Flask server
+        function sendCommand(command) {
+            fetch('/command', {
+                method: 'POST',
+                body: JSON.stringify({ command: command }),
+                headers:{
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.text())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Function to continuously send commands while button is held down
+        function startSendingCommand(command) {
+            intervalId = setInterval(function() {
+                sendCommand(command);
+            }, 1000); // Adjust the interval as needed
+        }
+
+        // Add event listeners to gamepad buttons
+        document.getElementById('forward').addEventListener('mousedown', function() {
+            startSendingCommand('forward');
+        });
+
+        document.getElementById('backward').addEventListener('mousedown', function() {
+            startSendingCommand('backward');
+        });
+
+        document.getElementById('left').addEventListener('mousedown', function() {
+            startSendingCommand('left');
+        });
+
+        document.getElementById('right').addEventListener('mousedown', function() {
+            startSendingCommand('right');
+        });
+
+        // Stop sending commands when button is released
+        document.addEventListener('mouseup', function() {
+            clearInterval(intervalId);
+        });
+
+        // Add event listeners to mode buttons
+        document.getElementById('manualMode').addEventListener('click', function() {
+            // Toggle manual mode state
+            manualModeActive = !manualModeActive;
+
+            if (manualModeActive) {
+                // Add your code to switch to manual mode
+                console.log('Switching to Manual Mode');
+                document.getElementById('manualMode').classList.add('bg-green-900');
+                sendCommand("manualmode_on");
+            } else {
+                // Add your code to disable manual mode
+                console.log('Manual Mode disabled');
+                document.getElementById('manualMode').classList.remove('bg-green-900');
+                sendCommand("manualmode_off");
+            }
+        });
+
+        document.getElementById('testMode').addEventListener('click', function() {
+            // Toggle test mode state
+            testModeActive = !testModeActive;
+
+            if (testModeActive) {
+                // Add your code to switch to test mode
+                console.log('Switching to Test Mode');
+                document.getElementById('testMode').classList.add('bg-yellow-900');
+                sendCommand("testmode_on");
+            } else {
+                // Add your code to disable test mode
+                console.log('Test Mode disabled');
+                document.getElementById('testMode').classList.remove('bg-yellow-900');
+                sendCommand("testmode_off");
+            }
+        });
+
+        document.getElementById('extinguish').addEventListener('click', function() {
+            // Add your code to extinguish
+            console.log('Extinguishing fire');
+            sendCommand("extinguish");
+        });
+        
+        document.getElementById('reset').addEventListener('click', function() {
+            // Add your code to reset
+            console.log('Resetting');
+            sendCommand("reset");
+        });   
+
+        // Event listener for motor toggle button
+        document.getElementById('motorToggle').addEventListener('click', function() {
+            // Toggle motor mode state
+            motorModeActive = !motorModeActive;
+
+            if (motorModeActive) {
+                // Add your code to turn on the motor
+                console.log('Motor On');
+                document.getElementById('motorToggle').classList.add('bg-gray-900');
+                sendCommand("motor_on");
+            } else {
+                // Add your code to turn off the motor
+                console.log('Motor Off');
+                document.getElementById('motorToggle').classList.remove('bg-gray-900');
+                sendCommand("motor_off");
+            }
+        });
+
+        // Event listener for music toggle button
+        document.getElementById('musicToggle').addEventListener('click', function() {
+            // Toggle music mode state
+            musicModeActive = !musicModeActive;
+
+            if (musicModeActive) {
+                // Add your code to activate music mode
+                console.log('Activating Music Mode');
+                document.getElementById('musicToggle').classList.add('bg-purple-900');
+                sendCommand("musicmode_on");
+            } else {
+                // Add your code to disable music mode
+                console.log('Music Mode disabled');
+                document.getElementById('musicToggle').classList.remove('bg-purple-900');
+                sendCommand("musicmode_off");
+            }
+        });     
+    </script>
+</body>
+</html>

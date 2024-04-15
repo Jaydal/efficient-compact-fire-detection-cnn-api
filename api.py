@@ -2,6 +2,7 @@ from datetime import datetime
 from genericpath import isfile
 from ntpath import join
 import random
+import time
 import uuid
 import flask
 import requests
@@ -11,8 +12,10 @@ from PIL import Image
 from io import BytesIO
 
 app = flask.Flask(__name__)
+request = flask.request
 app.config["DEBUG"] = True
 camera_capture = 'http://192.168.1.100/capture'
+arduino_ip = '192.168.1.101'
 logs = []
 
 def recent_images():
@@ -37,6 +40,23 @@ def get_photo():
         return response.content, 200
     else:
         return 'Failed to fetch image', 400
+    
+def send_command(command, max_retries=50, initial_retry_delay=1, max_retry_delay=1):
+    retries = 0
+    retry_delay = initial_retry_delay
+    while retries < max_retries:
+        try:
+            url = f"http://{arduino_ip}/command?command={command}"
+            print("Attempting to send command:", url)
+            response = requests.post(url)
+            return response.text
+        except requests.ConnectionError:
+            print("Connection error occurred. Retrying in", retry_delay, "seconds...")
+            time.sleep(retry_delay)
+            retries += 1
+            retry_delay = min(retry_delay * 2, max_retry_delay)  # Exponential backoff
+    print("Max retries exceeded. Arduino is still not available.")
+    return "No response",400
 
 @app.route('/', methods=['GET','POST'])
 def detect():
@@ -102,9 +122,9 @@ def create_log():
             log_message = data['message']
             log_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             logs.append((log_message, log_timestamp))
-            return flask.jsonify({'message': 'Log created successfully.'}), 201
+            return 201
         else:
-            return flask.jsonify({'error': 'Message not provided.'}), 400
+            return 400
 
 @app.route('/logs', methods=['GET'])
 def get_logs():
@@ -116,5 +136,16 @@ def get_logs():
 def get_raw_logs():
     if flask.request.method == 'GET':
         return flask.jsonify({'logs': list(reversed(logs))})
+
+@app.route('/controller')
+def index():
+    return flask.render_template('controller.html')
+
+@app.route('/command', methods=['POST'])
+def move():
+    data = flask.request.get_json()
+    command = (data['command'])
+    response = send_command(command)
+    return response
 
 app.run(host='0.0.0.0', port=80)
