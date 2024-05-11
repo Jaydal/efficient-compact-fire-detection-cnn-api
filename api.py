@@ -37,10 +37,19 @@ def pick_random():
     return random.choice(options)
 
 def get_photo():
-    response = requests.get(camera_capture)
-    if response.status_code == 200:
-        return response.content, 200
-    else:
+    try:
+        response = requests.get(camera_capture)
+        if response.status_code == 200:
+            return response.content, 200
+        else:
+            print("Fallback camera....")
+            response = requests.get(camera_capture_fallback)
+            if response.status_code == 200:
+                return response.content, 200
+            else:
+                return 'Failed to fetch image', 400
+    except:
+        print("An exception occurred")
         print("Fallback camera....")
         response = requests.get(camera_capture_fallback)
         if response.status_code == 200:
