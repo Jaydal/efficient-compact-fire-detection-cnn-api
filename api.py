@@ -7,6 +7,7 @@ import uuid
 import flask
 import requests
 from predict import predict_fire
+from predict_superpixel import predict_fire_sp
 import os
 from PIL import Image
 from io import BytesIO
@@ -15,6 +16,7 @@ app = flask.Flask(__name__)
 request = flask.request
 app.config["DEBUG"] = True
 camera_capture = 'http://192.168.1.100/capture'
+camera_capture_fallback = 'http://192.168.1.53:8080/browserfs.html'
 arduino_ip = '192.168.1.101'
 logs = []
 
@@ -66,7 +68,7 @@ def detect():
         print("============================")        
         data = flask.request.get_json()
         
-        testMode = bool(data['testMode'])
+        testMode = bool(data.get('testMode', False))
 
         if(testMode):
             print("Test mode enabled")
@@ -85,7 +87,7 @@ def detect():
         
         image = Image.open(BytesIO(image_data))
         
-        unique_filename = str(uuid.uuid4()) + '.png'
+        unique_filename = 'subject_'+str(uuid.uuid4()) + '.png'
 
         print(unique_filename)
         image_path = os.path.join('static/uploads', unique_filename)

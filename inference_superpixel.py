@@ -103,7 +103,8 @@ def process_sp(args, small_frame, np_transforms, model):
     slic = cv2.ximgproc.createSuperpixelSLIC(small_frame, region_size=22)
     slic.iterate(10)
     segments = slic.getLabels()
-
+    ret_prediction = None
+    
     for (i, segVal) in enumerate(np.unique(segments)):
         mask = np.zeros(small_frame.shape[:2], dtype='uint8')
         mask[segments == segVal] = 255
@@ -125,9 +126,18 @@ def process_sp(args, small_frame, np_transforms, model):
 
         # model prediction
         prediction = run_model_img(args, superpixel, model)
+        
+        if prediction.item() == 0.0:
+            ret_prediction = prediction
+        else:
+            if ret_prediction is None:
+                ret_prediction = prediction
+
 
         # draw prediction on superpixel
         draw_pred(args, small_frame, contours, prediction)
+        
+    return ret_prediction
 
 
 ##########################################################################
