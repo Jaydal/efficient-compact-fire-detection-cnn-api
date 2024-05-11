@@ -16,7 +16,7 @@ app = flask.Flask(__name__)
 request = flask.request
 app.config["DEBUG"] = True
 camera_capture = 'http://192.168.1.100/capture'
-camera_capture_fallback = 'http://192.168.1.53:8080/browserfs.html'
+camera_capture_fallback = 'http://192.168.1.53:8080/photo.jpg'
 arduino_ip = '192.168.1.101'
 logs = []
 
@@ -41,7 +41,12 @@ def get_photo():
     if response.status_code == 200:
         return response.content, 200
     else:
-        return 'Failed to fetch image', 400
+        print("Fallback camera....")
+        response = requests.get(camera_capture_fallback)
+        if response.status_code == 200:
+            return response.content, 200
+        else:
+            return 'Failed to fetch image', 400
     
 def send_command(command, max_retries=50, initial_retry_delay=1, max_retry_delay=1):
     retries = 0
