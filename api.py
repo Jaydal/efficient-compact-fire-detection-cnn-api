@@ -1,7 +1,9 @@
+import asyncio
 from datetime import datetime
 from genericpath import isfile
 from ntpath import join
 import random
+import threading
 import time
 import uuid
 import flask
@@ -12,10 +14,13 @@ import os
 from PIL import Image
 from io import BytesIO
 
+
 app = flask.Flask(__name__)
 request = flask.request
 app.config["DEBUG"] = True
-camera_capture = 'http://192.168.1.100/capture'
+# arduino cam
+camera_capture = 'http://192.168.1.100/capture' 
+# phone cam
 camera_capture_fallback = 'http://192.168.1.53:8080/photo.jpg'
 arduino_ip = '192.168.1.101'
 logs = []
@@ -58,6 +63,9 @@ def get_photo():
             return 'Failed to fetch image', 400
     
 def send_command(command, max_retries=50, initial_retry_delay=1, max_retry_delay=1):
+    print('Sending Command to ARDUINO:')
+    print(command)
+    
     retries = 0
     retry_delay = initial_retry_delay
     while retries < max_retries:
@@ -86,9 +94,15 @@ def detect():
 
         if(testMode):
             print("Test mode enabled")
+            randomNasnet = pick_random()
+            randomShufflenet = pick_random()
+            
+            if(str(randomShufflenet)!='1.0' or str(randomNasnet)!='1.0'):
+                thread = threading.Thread(target=send_command, args=("fire_detected",2,1,1))
+                thread.start()                
             return {
-                'nasnet':pick_random(),
-                'shufflenet':pick_random(),
+                'nasnet':randomNasnet,
+                'shufflenet':randomShufflenet,
                 'testMode':"Returns random prediction values"
             }
                     
@@ -122,6 +136,10 @@ def detect():
         
         print(predictions)
         
+        if(str(nasnet)!='1.0' or str(shufflenet)!='1.0'):
+            thread = threading.Thread(target=send_command, args=("fire_detected",2,1,1))
+            thread.start()                       
+            
         return flask.jsonify(predictions), 200
     
 @app.route('/get_recent_images', methods=['GET'])
