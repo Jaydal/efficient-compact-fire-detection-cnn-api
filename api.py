@@ -19,7 +19,7 @@ app = flask.Flask(__name__)
 request = flask.request
 app.config["DEBUG"] = True
 # arduino cam
-camera_capture = 'http://192.168.1.100/capture' 
+camera_capture = 'http://192.168.1.200/capture' 
 # phone cam
 camera_capture_fallback = 'http://192.168.1.53:8080/photo.jpg'
 arduino_ip = '192.168.1.101'
@@ -41,9 +41,9 @@ def pick_random():
     options = ["0.0", "1.0"]
     return random.choice(options)
 
-def get_photo():
+def get_photo(resource):
     try:
-        response = requests.get(camera_capture)
+        response = requests.get(resource)
         if response.status_code == 200:
             return response.content, 200
         else:
@@ -82,6 +82,48 @@ def send_command(command, max_retries=50, initial_retry_delay=1, max_retry_delay
     print("Max retries exceeded. Arduino is still not available.")
     return "No response",400
 
+@app.route('/detect/upload', methods=['GET','POST'])
+def detect_from_upload():
+    if flask.request.method == 'GET':
+        return flask.render_template('index.html', images=recent_images() )
+    elif flask.request.method == 'POST':
+        print("============================")        
+        data = flask.request.get_json()
+                    
+        image_data, status_code = get_photo(data.get('imageUri'))
+        
+        if(status_code==400):
+            print("Failed to capture image!")
+            print("*************************")
+            return 400
+        
+        image = Image.open(BytesIO(image_data))
+        
+        unique_filename = 'subject_'+str(uuid.uuid4()) + '.png'
+
+        print(unique_filename)
+        image_path = os.path.join('static/uploads', unique_filename)
+        
+        image.save(image_path)
+        
+        #detect
+        nasnet = predict_fire(image_path,'nasnetonfire')
+        shufflenet = predict_fire(image_path,'shufflenetonfire')
+        
+        predictions = {
+                'nasnet':str(nasnet),
+                'shufflenet':str(shufflenet)
+            }
+        
+        print(predictions)
+        
+        if(str(nasnet)!='1.0' or str(shufflenet)!='1.0'):
+            thread = threading.Thread(target=send_command, args=("fire_detected",2,1,1))
+            thread.start()                       
+            
+        return flask.jsonify(predictions), 200
+ 
+
 @app.route('/', methods=['GET','POST'])
 def detect():
     if flask.request.method == 'GET':
@@ -92,7 +134,7 @@ def detect():
         
         testMode = bool(data.get('testMode', False))
 
-        if(testMode):
+        if(True):
             print("Test mode enabled")
             randomNasnet = pick_random()
             randomShufflenet = pick_random()
@@ -106,7 +148,7 @@ def detect():
                 'testMode':"Returns random prediction values"
             }
                     
-        image_data, status_code = get_photo()
+        image_data, status_code = get_photo(camera_capture)
         
         if(status_code==400):
             print("Failed to capture image!")
